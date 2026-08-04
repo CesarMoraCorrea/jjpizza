@@ -15,14 +15,16 @@ import {
   ArrowLeft,
   Grid,
   Sparkles,
-  Lock
+  Lock,
+  MessageCircle,
+  Check
 } from 'lucide-react';
 import inventoryService from '../services/inventoryService';
 import orderService from '../services/orderService';
 import { socket } from '../services/socket';
 
-// Número de WhatsApp de la pizzería
-const WHATSAPP_NUMBER = '573128112675';
+// Número de WhatsApp oficial de JJ PIZZA
+const WHATSAPP_NUMBER = '573182126305';
 
 // Definición de Categorías con imágenes representativas y descripciones de grupo
 const CATEGORIES_CONFIG = [
@@ -97,6 +99,14 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedExtras, setSelectedExtras] = useState([]);
 
+  // Toast Notificación y Animación del Carrito
+  const [toastMessage, setToastMessage] = useState(null);
+  const [isCartBouncing, setIsCartBouncing] = useState(false);
+
+  // Touch Drag Guard (Para evitar clics falsos al hacer scroll en pantalla táctil)
+  const [touchStartPos, setTouchStartPos] = useState({ x: 0, y: 0 });
+  const [isDraggingTouch, setIsDraggingTouch] = useState(false);
+
   // Estado de Checkout Drawer (Bottom Sheet)
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [clientName, setClientName] = useState('');
@@ -106,8 +116,9 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [sendWhatsAppCopy, setSendWhatsAppCopy] = useState(false); // Opcional para Mesa
 
-  // Estado de Envío
+  // Estado de Envío y Modal de Confirmación
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -162,6 +173,32 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [selectedCategoryKey]);
 
+  // Manejadores Touch Drag para evitar clics al deslizar
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      setTouchStartPos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      setIsDraggingTouch(false);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches[0]) {
+      const dx = Math.abs(e.touches[0].clientX - touchStartPos.x);
+      const dy = Math.abs(e.touches[0].clientY - touchStartPos.y);
+      if (dx > 10 || dy > 10) {
+        setIsDraggingTouch(true);
+      }
+    }
+  };
+
+  // Feedback de Animación y Toast al agregar producto
+  const triggerCartFeedback = (productName) => {
+    setToastMessage(`✓ ¡${productName} agregado al pedido! 🍕`);
+    setIsCartBouncing(true);
+    setTimeout(() => setIsCartBouncing(false), 800);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
   // Adicionales (Extras) disponibles de suministros activos
   const getAvailableExtras = () => {
     const extrasConfig = [
@@ -187,6 +224,10 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
   };
 
   const handleProductClick = (product) => {
+    if (isDraggingTouch) {
+      setIsDraggingTouch(false);
+      return;
+    }
     if (product.stock <= 0) return;
     
     setSelectedProduct(product);
@@ -210,6 +251,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
     } else {
       setCart([...cart, { cartItemId, product, quantity: 1, extras }]);
     }
+    triggerCartFeedback(product.name);
   };
 
   const handleConfirmModifiers = () => {
@@ -281,7 +323,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
 
       if (!matchesSearch) return false;
 
-      if (searchTerm) return true; // Si hay búsqueda libre, muestra coincidencias de todas las categorías
+      if (searchTerm) return true;
 
       if (!selectedCategoryKey || selectedCategoryKey === 'all') return true;
 
@@ -290,13 +332,13 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
   };
 
   // Generar texto para WhatsApp
-  const getWhatsAppMessageText = (createdOrder) => {
+  const getWhatsAppMessageText = (createdOrder, finalClientName) => {
     const orderIdCode = createdOrder._id.substring(createdOrder._id.length - 6).toUpperCase();
     let msg = `*🍕 ¡NUEVO PEDIDO REGISTRADO EN JJ PIZZA! 🍕*\n`;
     msg += `===============================\n`;
     msg += `*Pedido #:* \`${orderIdCode}\`\n`;
-    msg += `*Cliente:* ${clientName.trim()}\n`;
-    msg += `*Modalidad:* ${orderType === 'dine_in' ? '🪑 Para la Mesa' : orderType === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar'}\n`;
+    msg += `*Cliente:* ${finalClientName}\n`;
+    msg += `*Modalidad:* ${orderType === 'dine_in' ? '🪑 En Mesa' : orderType === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar'}\n`;
     
     if (orderType === 'dine_in') {
       msg += `*Mesa:* ${tableNumber.trim()}\n`;
@@ -339,7 +381,10 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
       setSubmitError('El carrito está vacío');
       return;
     }
-    if (!clientName.trim()) {
+
+    const finalClientName = clientName.trim() || (orderType === 'dine_in' ? `Mesa ${tableNumber.trim()}` : '');
+
+    if (!finalClientName && ['delivery', 'pickup'].includes(orderType)) {
       setSubmitError('Por favor ingrese su nombre');
       return;
     }
@@ -361,7 +406,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
       const { totalPrice } = getCartTotals();
       
       const orderPayload = {
-        clientName: clientName.trim(),
+        clientName: finalClientName,
         orderType,
         tableNumber: orderType === 'dine_in' ? tableNumber.trim() : undefined,
         address: orderType === 'delivery' ? address.trim() : undefined,
@@ -385,9 +430,13 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
       
       if (res.success) {
         const created = res.data;
-        const whatsappText = getWhatsAppMessageText(created);
-        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappText}`;
-        window.open(whatsappUrl, '_blank');
+
+        // WhatsApp OBLIGATORIO para Domicilio/Para Llevar, O OPCIONAL si sendWhatsAppCopy es true para Mesa
+        if (['delivery', 'pickup'].includes(orderType) || sendWhatsAppCopy) {
+          const whatsappText = getWhatsAppMessageText(created, finalClientName);
+          const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappText}`;
+          window.open(whatsappUrl, '_blank');
+        }
 
         setLastCreatedOrder(created);
         setSubmitSuccess(true);
@@ -397,6 +446,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
         setAddress('');
         setPhone('');
         setNotes('');
+        setSendWhatsAppCopy(false);
         setIsCartDrawerOpen(false);
       }
     } catch (err) {
@@ -415,6 +465,14 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
   return (
     <div className="min-h-screen bg-[#141414] text-slate-100 font-sans selection:bg-[#F4C430] selection:text-black relative">
       
+      {/* Toast Flotante de Confirmación al agregar producto */}
+      {toastMessage && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#1E1E1E] border-2 border-[#F4C430] text-white text-xs font-black px-5 py-3 rounded-full shadow-2xl flex items-center gap-2.5 animate-slideUp">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="tracking-wide">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Fondo Texturizado Estilo Piedra */}
       <div 
         className="fixed inset-0 pointer-events-none opacity-25 z-0"
@@ -491,9 +549,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
           </div>
         ) : (
           <>
-            {/* ========================================================================= */}
-            {/* VISTA 1: GRID DE TARJETAS DE CATEGORÍAS (PANTALLA INICIAL DE NAVEGACIÓN) */}
-            {/* ========================================================================= */}
+            {/* VISTA 1: GRID DE CATEGORÍAS */}
             {selectedCategoryKey === null && !searchTerm ? (
               <div className="space-y-6 animate-fadeIn">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -508,7 +564,6 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                   </div>
                 </div>
 
-                {/* Grid de Tarjetas de Categorías Grandes */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {CATEGORIES_CONFIG.map(cat => {
                     const count = getCategoryCount(cat.key);
@@ -516,8 +571,13 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                     return (
                       <div
                         key={cat.key}
-                        onClick={() => setSelectedCategoryKey(cat.key)}
-                        className="group rounded-2xl overflow-hidden bg-[#1A1A1A] border border-white/10 shadow-xl hover:-translate-y-1 active:scale-[0.98] hover:border-[#F4C430]/60 hover:shadow-2xl hover:shadow-[#F4C430]/10 transition-all duration-200 cursor-pointer flex flex-col justify-between touch-manipulation"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onClick={() => {
+                          if (isDraggingTouch) return;
+                          setSelectedCategoryKey(cat.key);
+                        }}
+                        className="group rounded-2xl overflow-hidden bg-[#1A1A1A] border border-white/10 shadow-xl hover:-translate-y-1 active:scale-[0.98] hover:border-[#F4C430]/60 hover:shadow-2xl transition-all duration-200 cursor-pointer flex flex-col justify-between touch-manipulation"
                       >
                         <div className="relative h-44 overflow-hidden bg-black">
                           <img 
@@ -552,12 +612,9 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               </div>
             ) : (
 
-              /* ========================================================================= */
-              /* VISTA 2: DESGLOSE DE PRODUCTOS FILTRADOS (SIN BARRA DE TABS DE CATEGORÍAS) */
-              /* ========================================================================= */
+              /* VISTA 2: DESGLOSE DE PRODUCTOS FILTRADOS */
               <div className="space-y-6 animate-fadeIn">
                 
-                {/* Encabezado Limpio de la Categoría Seleccionada con Botón Volver */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
                   <div className="flex items-center gap-3">
                     <button
@@ -585,7 +642,6 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                   </span>
                 </div>
 
-                {/* Lista de Productos Filtrados en Grid */}
                 {filteredProducts.length === 0 ? (
                   <div className="p-16 text-center text-slate-500 bg-[#1E1E1E] border border-white/5 rounded-3xl">
                     <p className="font-bold text-sm">No hay productos disponibles en esta sección.</p>
@@ -608,6 +664,8 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           <DrinkCard 
                             key={product._id} 
                             product={product} 
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
                             onClick={() => handleProductClick(product)} 
                           />
                         );
@@ -618,6 +676,8 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           <CrimsonCardWithOverlay 
                             key={product._id} 
                             product={product} 
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
                             onClick={() => handleProductClick(product)} 
                           />
                         );
@@ -628,6 +688,8 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           <PizzaCard 
                             key={product._id} 
                             product={product} 
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
                             onClick={() => handleProductClick(product)} 
                           />
                         );
@@ -637,6 +699,8 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                         <CrimsonCard 
                           key={product._id} 
                           product={product} 
+                          onTouchStart={handleTouchStart}
+                          onTouchMove={handleTouchMove}
                           onClick={() => handleProductClick(product)} 
                         />
                       );
@@ -650,19 +714,19 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
         )}
       </main>
 
-      {/* ========================================================================= */}
-      {/* BOTÓN FLOTANTE (FAB) "My Order" CON INSIGNIA DE CARRITO */}
-      {/* ========================================================================= */}
+      {/* BOTÓN FLOTANTE (FAB) CON INSIGNIA DE CARRITO ANIMADA */}
       <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-40">
         <button
           onClick={() => setIsCartDrawerOpen(true)}
           className="group flex items-center bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white pl-5 pr-2 py-2 rounded-full shadow-2xl shadow-black/90 transition-all duration-200 border border-[#F4C430]/40 min-h-[48px] touch-manipulation cursor-pointer"
         >
           <span className="font-extrabold text-sm uppercase tracking-wider mr-3">My Order</span>
-          <div className="relative w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center shadow-inner text-[#8B1E1E] group-active:scale-95">
+          <div className="relative w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center shadow-inner text-[#8B1E1E]">
             <ShoppingBag className="w-5 h-5 font-bold" />
             {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-black text-[#F4C430] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-[#F4C430] shadow-md animate-pulse">
+              <span className={`absolute -top-1.5 -right-1.5 bg-black text-[#F4C430] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-[#F4C430] shadow-md transition-all duration-300 ${
+                isCartBouncing ? 'scale-125 bg-[#8B1E1E] text-white animate-bounce' : ''
+              }`}>
                 {totalItems}
               </span>
             )}
@@ -670,13 +734,10 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* PIE DE PÁGINA (FOOTER RESTRUCTURADO Y ELEGANTE) */}
-      {/* ========================================================================= */}
+      {/* PIE DE PÁGINA */}
       <footer className="relative z-10 border-t border-[#F4C430]/20 mt-16 bg-[#0D0D0D] text-slate-300">
         <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8 items-center text-center md:text-left">
           
-          {/* Col 1: Marca & Slogan */}
           <div className="flex flex-col items-center md:items-start gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#8B1E1E] border-2 border-[#F4C430] flex items-center justify-center shadow-lg">
@@ -691,14 +752,12 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
             </p>
           </div>
 
-          {/* Col 2: Horarios & Atención */}
           <div className="space-y-1 text-xs font-medium text-slate-400">
             <p className="text-[#F4C430] font-black uppercase tracking-wider">Horario de Atención</p>
             <p className="text-white font-bold">Lunes a Domingo: 4:00 PM – 11:30 PM</p>
             <p className="text-slate-400">Servicio a Domicilio, Para Llevar y Mesa</p>
           </div>
 
-          {/* Col 3: Contactos Directos & Redes */}
           <div className="flex flex-col items-center md:items-end gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-300">
             <div className="flex items-center gap-2 bg-[#1A1A1A] px-3 py-1.5 rounded-full border border-white/10">
               <Phone className="w-3.5 h-3.5 text-[#F4C430]" />
@@ -712,7 +771,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               className="flex items-center gap-2 bg-[#1A1A1A] hover:border-[#F4C430] active:scale-95 px-3 py-1.5 rounded-full border border-white/10 transition-all text-white min-h-[44px]"
             >
               <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-              <span>CEL / WA: 312 811 2675</span>
+              <span>WA: 318 212 6305</span>
             </a>
 
             <div className="flex items-center gap-2 text-slate-400 text-[11px]">
@@ -725,7 +784,6 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
 
         </div>
 
-        {/* Barra Inferior Copyright (Ancho Completo y Centrado) */}
         <div className="border-t border-white/5 bg-[#080808] py-4 w-full text-center text-[11px] font-bold uppercase tracking-widest text-slate-500">
           © 2026 JJ PIZZA • Todos los derechos reservados
         </div>
@@ -741,7 +799,6 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md bg-[#1A1A1A] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-slideUp cursor-default max-h-[90vh] flex flex-col"
           >
-            {/* Indicador de cierre deslizable para móviles */}
             <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4 md:hidden shrink-0" />
 
             <button
@@ -804,7 +861,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
         </div>
       )}
 
-      {/* CARRITO DRAWER */}
+      {/* CARRITO DRAWER (CHECKOUT) */}
       {isCartDrawerOpen && (
         <div 
           onClick={(e) => { if (e.target === e.currentTarget) setIsCartDrawerOpen(false); }}
@@ -814,7 +871,6 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md bg-[#1A1A1A] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl animate-slideLeft cursor-default"
           >
-            {/* Indicador de cierre deslizable en móviles */}
             <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 md:hidden" />
 
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#141414]">
@@ -885,6 +941,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                   <form onSubmit={handleSubmitOrder} className="space-y-4 pt-4 border-t border-white/10">
                     <h3 className="text-xs font-black uppercase text-[#F4C430] tracking-wider">Datos de Entrega</h3>
                     
+                    {/* Selector de Modalidad */}
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         type="button"
@@ -895,7 +952,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                             : 'bg-[#141414] border-white/10 text-slate-400'
                         }`}
                       >
-                        En Mesa
+                        🪑 En Mesa
                       </button>
                       <button
                         type="button"
@@ -906,7 +963,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                             : 'bg-[#141414] border-white/10 text-slate-400'
                         }`}
                       >
-                        Domicilio
+                        🛵 Domicilio
                       </button>
                       <button
                         type="button"
@@ -917,51 +974,70 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                             : 'bg-[#141414] border-white/10 text-slate-400'
                         }`}
                       >
-                        Llevar
+                        🛍️ Llevar
                       </button>
                     </div>
 
+                    {/* Formulario Dinámico según Modalidad */}
                     <div className="space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Tu Nombre completo *"
-                        value={clientName}
-                        onChange={e => setClientName(e.target.value)}
-                        className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
-                      />
+                      {orderType === 'dine_in' ? (
+                        <>
+                          <input
+                            type="text"
+                            placeholder="Número de Mesa *"
+                            value={tableNumber}
+                            onChange={e => setTableNumber(e.target.value)}
+                            className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px] font-bold"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Tu Nombre (Opcional)"
+                            value={clientName}
+                            onChange={e => setClientName(e.target.value)}
+                            className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
+                          />
+                          <label className="flex items-center gap-2.5 text-xs text-slate-300 cursor-pointer pt-1 bg-[#141414] p-2.5 rounded-lg border border-white/5">
+                            <input 
+                              type="checkbox"
+                              checked={sendWhatsAppCopy}
+                              onChange={(e) => setSendWhatsAppCopy(e.target.checked)}
+                              className="w-4 h-4 rounded bg-[#1A1A1A] border-white/20 text-[#F4C430] focus:ring-[#F4C430] cursor-pointer"
+                            />
+                            <span className="font-semibold">¿Deseas copia por WhatsApp? (Opcional)</span>
+                          </label>
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            placeholder="Tu Nombre completo *"
+                            value={clientName}
+                            onChange={e => setClientName(e.target.value)}
+                            className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px] font-bold"
+                          />
 
-                      {orderType === 'dine_in' && (
-                        <input
-                          type="text"
-                          placeholder="Número de Mesa *"
-                          value={tableNumber}
-                          onChange={e => setTableNumber(e.target.value)}
-                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
-                        />
-                      )}
+                          {orderType === 'delivery' && (
+                            <input
+                              type="text"
+                              placeholder="Dirección exacta de entrega *"
+                              value={address}
+                              onChange={e => setAddress(e.target.value)}
+                              className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px] font-bold"
+                            />
+                          )}
 
-                      {orderType === 'delivery' && (
-                        <input
-                          type="text"
-                          placeholder="Dirección de entrega *"
-                          value={address}
-                          onChange={e => setAddress(e.target.value)}
-                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
-                        />
-                      )}
-
-                      {['delivery', 'pickup'].includes(orderType) && (
-                        <input
-                          type="text"
-                          placeholder="Número de Celular *"
-                          value={phone}
-                          onChange={e => setPhone(e.target.value)}
-                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
-                        />
+                          <input
+                            type="text"
+                            placeholder="Número de Celular *"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px] font-bold"
+                          />
+                        </>
                       )}
 
                       <textarea
-                        placeholder="Notas especiales (opcional)"
+                        placeholder="Notas especiales para cocina (opcional)"
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
                         rows={2}
@@ -970,7 +1046,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                     </div>
 
                     {submitError && (
-                      <div className="bg-red-950/60 border border-red-800 text-red-200 text-xs p-3 rounded-lg flex items-start gap-2">
+                      <div className="bg-red-950/60 border border-red-800 text-red-200 text-xs p-3 rounded-lg flex items-start gap-2 font-bold">
                         <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                         <span>{submitError}</span>
                       </div>
@@ -980,6 +1056,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               )}
             </div>
 
+            {/* BOTÓN PRINCIPAL ADAPTATIVO DE CONFIRMACIÓN */}
             {cart.length > 0 && (
               <div className="p-6 border-t border-white/10 bg-[#141414] space-y-4">
                 <div className="flex justify-between items-center text-sm font-black uppercase text-white">
@@ -989,16 +1066,78 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                   </span>
                 </div>
 
-                <button
-                  onClick={handleSubmitOrder}
-                  disabled={isSubmitting}
-                  className="w-full py-4 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xl shadow-[#8B1E1E]/40 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"
-                >
-                  {isSubmitting ? 'Procesando...' : 'Confirmar Orden y Enviar a WhatsApp 📲'}
-                </button>
+                {orderType === 'dine_in' ? (
+                  <button
+                    onClick={handleSubmitOrder}
+                    disabled={isSubmitting}
+                    className="w-full py-4 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xl shadow-[#8B1E1E]/40 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation cursor-pointer border border-[#F4C430]/30"
+                  >
+                    <ChefHat className="w-5 h-5 text-[#F4C430]" />
+                    <span>{isSubmitting ? 'Procesando...' : 'Confirmar Pedido Directo (A Cocina) 👨‍🍳'}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmitOrder}
+                    disabled={isSubmitting}
+                    className="w-full py-4 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xl shadow-emerald-950/60 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation cursor-pointer border border-emerald-400/30"
+                  >
+                    <MessageCircle className="w-5 h-5 fill-current text-white" />
+                    <span>{isSubmitting ? 'Procesando...' : 'Confirmar y Enviar por WhatsApp 📲'}</span>
+                  </button>
+                )}
               </div>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ÉXITO Y CONFIRMACIÓN DE PEDIDO */}
+      {submitSuccess && lastCreatedOrder && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#1A1A1A] border-2 border-emerald-500/60 rounded-3xl p-6 shadow-2xl text-center space-y-5 animate-slideUp">
+            
+            <div className="w-16 h-16 rounded-full bg-emerald-950/90 border-2 border-emerald-500 flex items-center justify-center mx-auto text-emerald-400 shadow-xl">
+              <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
+            </div>
+
+            <div>
+              <span className="font-mono text-xs font-black text-[#F4C430] bg-[#141414] px-3 py-1 rounded-full border border-white/10">
+                PEDIDO #{lastCreatedOrder._id.substring(lastCreatedOrder._id.length - 6).toUpperCase()}
+              </span>
+              <h3 className="text-2xl font-black uppercase text-white mt-3">
+                ¡Pedido Registrado con Éxito!
+              </h3>
+              <p className="text-xs text-slate-300 font-medium leading-relaxed mt-2">
+                {lastCreatedOrder.orderType === 'dine_in'
+                  ? `Su orden ha sido enviada directamente a la Cocina KDS. En breve el personal la llevará a su Mesa ${lastCreatedOrder.tableNumber}.`
+                  : lastCreatedOrder.orderType === 'delivery'
+                  ? 'Su pedido ha sido registrado y enviado por WhatsApp. El equipo de JJ PIZZA preparará su domicilio.'
+                  : 'Su pedido para llevar ha sido registrado y enviado por WhatsApp. Le avisaremos para que pase a recogerlo.'}
+              </p>
+            </div>
+
+            <div className="bg-[#141414] p-4 rounded-2xl border border-white/10 space-y-1 text-left text-xs font-mono">
+              <div className="flex justify-between text-slate-400">
+                <span>Total a Pagar:</span>
+                <span className="text-[#F4C430] font-bold font-mono">
+                  ${(lastCreatedOrder.totalAmount || 0).toLocaleString('es-CO')}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Modalidad:</span>
+                <span className="text-white font-bold uppercase">
+                  {lastCreatedOrder.orderType === 'dine_in' ? `🪑 Mesa ${lastCreatedOrder.tableNumber}` : lastCreatedOrder.orderType === 'delivery' ? '🛵 Domicilio' : '🛍️ Para Llevar'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { setSubmitSuccess(false); setLastCreatedOrder(null); }}
+              className="w-full py-3.5 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg border border-[#F4C430]/30 min-h-[44px]"
+            >
+              Aceptar y Volver al Menú
+            </button>
           </div>
         </div>
       )}
@@ -1008,12 +1147,14 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
 }
 
 // Tarjeta de Pizza (Banda inferior AMARILLO MOSTAZA)
-function PizzaCard({ product, onClick }) {
+function PizzaCard({ product, onTouchStart, onTouchMove, onClick }) {
   const isOutOfStock = product.stock <= 0;
   const imageSrc = product.imageUrl || getProductImage(product.category, product.name);
 
   return (
     <div 
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onClick={onClick}
       className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-2xl transition-all duration-200 cursor-pointer touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
@@ -1050,12 +1191,14 @@ function PizzaCard({ product, onClick }) {
 }
 
 // Tarjeta Carmesí (Lasagna, Hamburguesas, Maicitos)
-function CrimsonCard({ product, onClick }) {
+function CrimsonCard({ product, onTouchStart, onTouchMove, onClick }) {
   const isOutOfStock = product.stock <= 0;
   const imageSrc = product.imageUrl || getProductImage(product.category, product.name);
 
   return (
     <div 
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onClick={onClick}
       className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-2xl transition-all duration-200 cursor-pointer touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
@@ -1092,12 +1235,14 @@ function CrimsonCard({ product, onClick }) {
 }
 
 // Tarjeta Carmesí con Botón Superpuesto "Add to Order"
-function CrimsonCardWithOverlay({ product, onClick }) {
+function CrimsonCardWithOverlay({ product, onTouchStart, onTouchMove, onClick }) {
   const isOutOfStock = product.stock <= 0;
   const imageSrc = product.imageUrl || getProductImage(product.category, product.name);
 
   return (
     <div 
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onClick={onClick}
       className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-2xl transition-all duration-200 cursor-pointer touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
@@ -1143,12 +1288,14 @@ function CrimsonCardWithOverlay({ product, onClick }) {
 }
 
 // Tarjeta Pequeña para Bebidas
-function DrinkCard({ product, onClick }) {
+function DrinkCard({ product, onTouchStart, onTouchMove, onClick }) {
   const isOutOfStock = product.stock <= 0;
   const imageSrc = product.imageUrl || getProductImage(product.category, product.name);
 
   return (
     <div 
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
       onClick={onClick}
       className={`group rounded-2xl overflow-hidden shadow-lg bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
