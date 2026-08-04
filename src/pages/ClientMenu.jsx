@@ -615,31 +615,33 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               /* VISTA 2: DESGLOSE DE PRODUCTOS FILTRADOS */
               <div className="space-y-6 animate-fadeIn">
                 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-                  <div className="flex items-center gap-3">
+                <div className="space-y-4 border-b border-white/10 pb-5">
+                  {/* Fila 1: Botón Volver + Contador de Productos */}
+                  <div className="flex items-center justify-between gap-3">
                     <button
                       onClick={() => { setSelectedCategoryKey(null); setSearchTerm(''); }}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white border border-[#F4C430]/40 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shrink-0 min-h-[44px] touch-manipulation"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white border border-[#F4C430]/40 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shrink-0 min-h-[44px] touch-manipulation cursor-pointer"
                     >
                       <ArrowLeft className="w-4 h-4 text-[#F4C430]" />
                       <span>Volver a Categorías</span>
                     </button>
 
-                    <div>
-                      <h2 className="text-2xl md:text-3xl font-black text-[#F4C430] uppercase tracking-wide flex items-center gap-2">
-                        {selectedCategoryKey === 'all' 
-                          ? '✨ Todo el Menú' 
-                          : `${CATEGORIES_CONFIG.find(c => c.key === selectedCategoryKey)?.icon || ''} ${CATEGORIES_CONFIG.find(c => c.key === selectedCategoryKey)?.name || 'Productos'}`}
-                      </h2>
-                      <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                        Explora la selección disponible en esta categoría
-                      </p>
-                    </div>
+                    <span className="bg-[#1E1E1E] border border-white/10 text-[#F4C430] text-xs font-bold font-mono px-3 py-1.5 rounded-full shrink-0">
+                      {filteredProducts.length} productos
+                    </span>
                   </div>
 
-                  <span className="self-start sm:self-auto bg-[#1E1E1E] border border-white/10 text-[#F4C430] text-xs font-bold font-mono px-3 py-1.5 rounded-full">
-                    {filteredProducts.length} productos
-                  </span>
+                  {/* Fila 2: Título de Categoría Grande y Subtítulo */}
+                  <div>
+                    <h2 className="text-3xl sm:text-4xl font-black text-[#F4C430] uppercase tracking-wide flex items-center gap-2">
+                      {selectedCategoryKey === 'all' 
+                        ? '✨ Todo el Menú' 
+                        : `${CATEGORIES_CONFIG.find(c => c.key === selectedCategoryKey)?.icon || ''} ${CATEGORIES_CONFIG.find(c => c.key === selectedCategoryKey)?.name || 'Productos'}`}
+                    </h2>
+                    <p className="text-xs text-slate-400 font-semibold mt-1">
+                      Explora la selección disponible en esta categoría
+                    </p>
+                  </div>
                 </div>
 
                 {filteredProducts.length === 0 ? (
