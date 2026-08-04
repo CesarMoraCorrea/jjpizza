@@ -43,6 +43,7 @@ function App() {
     window.history.pushState({}, '', to);
     setPath(to);
     setUser(authService.getCurrentUser());
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLoginSuccess = (userObj) => {

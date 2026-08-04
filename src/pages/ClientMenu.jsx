@@ -33,7 +33,7 @@ const CATEGORIES_CONFIG = [
   { key: 'salchifrancesas', name: 'Salchifrancesas', icon: '🍟', subtitle: 'Salchicha, Papa a la Francesa & Salsas', image: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?w=600&h=400&fit=crop' },
   { key: 'maicitos', name: 'Maicitos', icon: '🌽', subtitle: 'Maíz, Pollo, Tocineta, Queso & Ripio', image: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&h=400&fit=crop' },
   { key: 'colitas', name: 'Colitas Cubanas', icon: '🥖', subtitle: 'Especialidades Horneadas de la Casa', image: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=600&h=400&fit=crop' },
-  { key: 'bebidas', name: 'Bebidas', icon: '🥤', subtitle: 'Gaseosas, Jugos & Refrescos Fríos', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&h=400&fit=crop' },
+  { key: 'bebidas', name: 'Bebidas', icon: '🥤', subtitle: 'Gaseosas, Jugos & Refrescos Fríos', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&h=400&fit=crop' },
   { key: 'adicionales', name: 'Adicionales', icon: '🧀', subtitle: 'Queso Extra, Tocineta & Aderezos', image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&h=400&fit=crop' }
 ];
 
@@ -141,6 +141,26 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
       socket.off('inventory:updated', loadData);
     };
   }, []);
+
+  // Bloqueo de Scroll en Body mientras cualquier Modal o Carrito Lateral esté abierto
+  useEffect(() => {
+    if (isModifiersModalOpen || isCartDrawerOpen || submitSuccess) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = 'unset';
+      document.body.style.touchAction = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+      document.body.style.touchAction = 'unset';
+    };
+  }, [isModifiersModalOpen, isCartDrawerOpen, submitSuccess]);
+
+  // Restablecer scroll al principio al cambiar de categoría
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [selectedCategoryKey]);
 
   // Adicionales (Extras) disponibles de suministros activos
   const getAvailableExtras = () => {
@@ -433,13 +453,13 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               placeholder="Buscar en todo el menú..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#1F1F1F] border border-white/10 text-white placeholder-white/40 text-sm rounded-full py-2.5 pl-10 pr-10 focus:outline-none focus:border-[#F4C430] focus:ring-1 focus:ring-[#F4C430] transition-all shadow-inner font-bold"
+              className="w-full bg-[#1F1F1F] border border-white/10 text-white placeholder-white/40 text-sm rounded-full py-3 pl-10 pr-10 focus:outline-none focus:border-[#F4C430] focus:ring-1 focus:ring-[#F4C430] transition-all shadow-inner font-bold min-h-[44px] touch-manipulation"
             />
             <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1 rounded-full active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -462,7 +482,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
       {/* ========================================================================= */}
       {/* CUERPO PRINCIPAL DEL MENÚ */}
       {/* ========================================================================= */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 py-8 pb-32 md:pb-16">
         
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -497,7 +517,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                       <div
                         key={cat.key}
                         onClick={() => setSelectedCategoryKey(cat.key)}
-                        className="group rounded-2xl overflow-hidden bg-[#1A1A1A] border border-white/10 shadow-xl hover:-translate-y-1 hover:border-[#F4C430]/60 hover:shadow-2xl hover:shadow-[#F4C430]/10 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                        className="group rounded-2xl overflow-hidden bg-[#1A1A1A] border border-white/10 shadow-xl hover:-translate-y-1 active:scale-[0.98] hover:border-[#F4C430]/60 hover:shadow-2xl hover:shadow-[#F4C430]/10 transition-all duration-200 cursor-pointer flex flex-col justify-between touch-manipulation"
                       >
                         <div className="relative h-44 overflow-hidden bg-black">
                           <img 
@@ -542,7 +562,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => { setSelectedCategoryKey(null); setSearchTerm(''); }}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#8B1E1E] hover:bg-[#a62424] text-white border border-[#F4C430]/40 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg active:scale-95 shrink-0"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white border border-[#F4C430]/40 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shrink-0 min-h-[44px] touch-manipulation"
                     >
                       <ArrowLeft className="w-4 h-4 text-[#F4C430]" />
                       <span>Volver a Categorías</span>
@@ -633,16 +653,16 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
       {/* ========================================================================= */}
       {/* BOTÓN FLOTANTE (FAB) "My Order" CON INSIGNIA DE CARRITO */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-40">
         <button
           onClick={() => setIsCartDrawerOpen(true)}
-          className="group flex items-center bg-[#8B1E1E] hover:bg-[#a62424] text-white pl-5 pr-2 py-2 rounded-full shadow-2xl shadow-black/80 hover:scale-105 transition-all duration-300 border border-white/10"
+          className="group flex items-center bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white pl-5 pr-2 py-2 rounded-full shadow-2xl shadow-black/90 transition-all duration-200 border border-[#F4C430]/40 min-h-[48px] touch-manipulation cursor-pointer"
         >
           <span className="font-extrabold text-sm uppercase tracking-wider mr-3">My Order</span>
-          <div className="relative w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center shadow-inner text-[#8B1E1E]">
+          <div className="relative w-10 h-10 rounded-full bg-[#F4C430] flex items-center justify-center shadow-inner text-[#8B1E1E] group-active:scale-95">
             <ShoppingBag className="w-5 h-5 font-bold" />
             {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-black text-[#F4C430] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-[#F4C430] shadow-md">
+              <span className="absolute -top-1.5 -right-1.5 bg-black text-[#F4C430] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border border-[#F4C430] shadow-md animate-pulse">
                 {totalItems}
               </span>
             )}
@@ -689,7 +709,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 bg-[#1A1A1A] hover:border-[#F4C430] px-3 py-1.5 rounded-full border border-white/10 transition-colors text-white"
+              className="flex items-center gap-2 bg-[#1A1A1A] hover:border-[#F4C430] active:scale-95 px-3 py-1.5 rounded-full border border-white/10 transition-all text-white min-h-[44px]"
             >
               <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
               <span>CEL / WA: 312 811 2675</span>
@@ -713,11 +733,20 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
 
       {/* MODAL DE ADICIONALES */}
       {isModifiersModalOpen && selectedProduct && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#1A1A1A] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-slideUp">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsModifiersModalOpen(false); }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 touch-manipulation cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[#1A1A1A] border border-white/10 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-slideUp cursor-default max-h-[90vh] flex flex-col"
+          >
+            {/* Indicador de cierre deslizable para móviles */}
+            <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4 md:hidden shrink-0" />
+
             <button
               onClick={() => setIsModifiersModalOpen(false)}
-              className="absolute top-4 right-4 p-1 text-white/40 hover:text-white bg-white/5 rounded-full"
+              className="absolute top-4 right-4 p-2 text-white/40 hover:text-white bg-white/5 rounded-full active:scale-95 transition-transform"
             >
               <X className="w-5 h-5" />
             </button>
@@ -730,7 +759,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
             {availableExtras.length === 0 ? (
               <p className="text-xs text-slate-500 italic mb-4">No hay adicionales configurados actualmente.</p>
             ) : (
-              <div className="space-y-2 mb-6 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-2.5 mb-6 overflow-y-auto pr-1 flex-1">
                 {availableExtras.map(extra => {
                   const isChecked = selectedExtras.some(e => e.supplyId === extra.supplyId);
                   const isOutOfStock = extra.availableStock <= 0;
@@ -739,7 +768,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                     <div
                       key={extra.supplyId}
                       onClick={() => !isOutOfStock && toggleExtra(extra)}
-                      className={`p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
+                      className={`p-3.5 rounded-xl border transition-all flex items-center justify-between cursor-pointer active:scale-[0.98] min-h-[48px] touch-manipulation ${
                         isChecked 
                           ? 'bg-[#8B1E1E]/20 border-[#8B1E1E] text-white' 
                           : 'bg-[#141414] border-white/10 text-slate-300 hover:border-white/20'
@@ -767,7 +796,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
 
             <button
               onClick={handleConfirmModifiers}
-              className="w-full py-3 bg-[#8B1E1E] hover:bg-[#a62424] text-white font-black text-sm uppercase rounded-xl transition-all shadow-lg shadow-[#8B1E1E]/30"
+              className="w-full py-3.5 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white font-black text-sm uppercase rounded-xl transition-all shadow-lg shadow-[#8B1E1E]/30 min-h-[48px] shrink-0 touch-manipulation"
             >
               Agregar al Carrito
             </button>
@@ -777,9 +806,17 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
 
       {/* CARRITO DRAWER */}
       {isCartDrawerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end">
-          <div className="w-full max-w-md bg-[#1A1A1A] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl animate-slideLeft">
-            
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsCartDrawerOpen(false); }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end touch-manipulation cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[#1A1A1A] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl animate-slideLeft cursor-default"
+          >
+            {/* Indicador de cierre deslizable en móviles */}
+            <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 md:hidden" />
+
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-[#141414]">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-[#F4C430]" />
@@ -787,7 +824,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
               </div>
               <button
                 onClick={() => setIsCartDrawerOpen(false)}
-                className="p-1.5 rounded-full bg-white/5 text-white/60 hover:text-white"
+                className="p-2 rounded-full bg-white/5 text-white/60 hover:text-white active:scale-95"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -815,7 +852,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           <div className="flex items-center gap-2 bg-[#1F1F1F] border border-white/10 rounded-lg p-1">
                             <button
                               onClick={() => updateCartItemQuantity(item.cartItemId, -1)}
-                              className="p-0.5 text-white/60 hover:text-white"
+                              className="p-1 text-white/60 hover:text-white active:scale-95 min-w-[32px] min-h-[32px] flex items-center justify-center"
                             >
                               <Minus className="w-3.5 h-3.5" />
                             </button>
@@ -824,7 +861,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                             </span>
                             <button
                               onClick={() => updateCartItemQuantity(item.cartItemId, 1)}
-                              className="p-0.5 text-white/60 hover:text-white"
+                              className="p-1 text-white/60 hover:text-white active:scale-95 min-w-[32px] min-h-[32px] flex items-center justify-center"
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </button>
@@ -852,7 +889,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                       <button
                         type="button"
                         onClick={() => setOrderType('dine_in')}
-                        className={`py-2 text-[11px] font-extrabold uppercase rounded-lg border transition-all ${
+                        className={`py-3 text-[11px] font-extrabold uppercase rounded-lg border transition-all active:scale-95 min-h-[44px] ${
                           orderType === 'dine_in' 
                             ? 'bg-[#8B1E1E] border-[#8B1E1E] text-white' 
                             : 'bg-[#141414] border-white/10 text-slate-400'
@@ -863,7 +900,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                       <button
                         type="button"
                         onClick={() => setOrderType('delivery')}
-                        className={`py-2 text-[11px] font-extrabold uppercase rounded-lg border transition-all ${
+                        className={`py-3 text-[11px] font-extrabold uppercase rounded-lg border transition-all active:scale-95 min-h-[44px] ${
                           orderType === 'delivery' 
                             ? 'bg-[#8B1E1E] border-[#8B1E1E] text-white' 
                             : 'bg-[#141414] border-white/10 text-slate-400'
@@ -874,7 +911,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                       <button
                         type="button"
                         onClick={() => setOrderType('pickup')}
-                        className={`py-2 text-[11px] font-extrabold uppercase rounded-lg border transition-all ${
+                        className={`py-3 text-[11px] font-extrabold uppercase rounded-lg border transition-all active:scale-95 min-h-[44px] ${
                           orderType === 'pickup' 
                             ? 'bg-[#8B1E1E] border-[#8B1E1E] text-white' 
                             : 'bg-[#141414] border-white/10 text-slate-400'
@@ -890,7 +927,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                         placeholder="Tu Nombre completo *"
                         value={clientName}
                         onChange={e => setClientName(e.target.value)}
-                        className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 rounded-lg focus:border-[#F4C430] outline-none"
+                        className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
                       />
 
                       {orderType === 'dine_in' && (
@@ -899,7 +936,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           placeholder="Número de Mesa *"
                           value={tableNumber}
                           onChange={e => setTableNumber(e.target.value)}
-                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 rounded-lg focus:border-[#F4C430] outline-none"
+                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
                         />
                       )}
 
@@ -909,7 +946,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           placeholder="Dirección de entrega *"
                           value={address}
                           onChange={e => setAddress(e.target.value)}
-                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 rounded-lg focus:border-[#F4C430] outline-none"
+                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
                         />
                       )}
 
@@ -919,7 +956,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                           placeholder="Número de Celular *"
                           value={phone}
                           onChange={e => setPhone(e.target.value)}
-                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 rounded-lg focus:border-[#F4C430] outline-none"
+                          className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none min-h-[44px]"
                         />
                       )}
 
@@ -928,7 +965,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
                         rows={2}
-                        className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 rounded-lg focus:border-[#F4C430] outline-none resize-none"
+                        className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 rounded-lg focus:border-[#F4C430] outline-none resize-none"
                       />
                     </div>
 
@@ -955,7 +992,7 @@ export default function ClientMenu({ onNavigateToPOS, onNavigateToDashboard, onO
                 <button
                   onClick={handleSubmitOrder}
                   disabled={isSubmitting}
-                  className="w-full py-3.5 bg-[#8B1E1E] hover:bg-[#a62424] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xl shadow-[#8B1E1E]/40 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-xl shadow-[#8B1E1E]/40 flex items-center justify-center gap-2 min-h-[48px] touch-manipulation"
                 >
                   {isSubmitting ? 'Procesando...' : 'Confirmar Orden y Enviar a WhatsApp 📲'}
                 </button>
@@ -978,7 +1015,7 @@ function PizzaCard({ product, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 cursor-pointer ${
+      className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-2xl transition-all duration-200 cursor-pointer touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
       }`}
     >
@@ -1020,7 +1057,7 @@ function CrimsonCard({ product, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 cursor-pointer ${
+      className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-2xl transition-all duration-200 cursor-pointer touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
       }`}
     >
@@ -1062,7 +1099,7 @@ function CrimsonCardWithOverlay({ product, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 cursor-pointer ${
+      className={`group rounded-2xl overflow-hidden shadow-xl bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-2xl transition-all duration-200 cursor-pointer touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
       }`}
     >
@@ -1076,7 +1113,7 @@ function CrimsonCardWithOverlay({ product, onClick }) {
         <div className="absolute bottom-3 right-3">
           <button
             disabled={isOutOfStock}
-            className="bg-black/80 backdrop-blur-md border border-[#F4C430] text-[#F4C430] hover:bg-[#F4C430] hover:text-black text-xs font-extrabold px-3 py-1.5 rounded-lg shadow-lg transition-all"
+            className="bg-black/80 backdrop-blur-md border border-[#F4C430] text-[#F4C430] hover:bg-[#F4C430] hover:text-black text-xs font-extrabold px-3 py-1.5 rounded-lg shadow-lg transition-all active:scale-95 min-h-[36px]"
           >
             Add to Order
           </button>
@@ -1113,7 +1150,7 @@ function DrinkCard({ product, onClick }) {
   return (
     <div 
       onClick={onClick}
-      className={`group rounded-2xl overflow-hidden shadow-lg bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between ${
+      className={`group rounded-2xl overflow-hidden shadow-lg bg-[#1A1A1A] border border-white/5 hover:-translate-y-1 active:scale-[0.98] hover:shadow-xl transition-all duration-200 cursor-pointer flex flex-col justify-between touch-manipulation ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
       }`}
     >

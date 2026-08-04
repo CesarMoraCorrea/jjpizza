@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Lock, Mail, UserCheck, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import authService from '../services/authService';
 
@@ -7,6 +7,18 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Bloqueo de scroll del fondo cuando el modal esté abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -52,14 +64,29 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     }
   };
 
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#1A1A1A] border-2 border-[#F4C430]/40 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-fadeIn">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 touch-manipulation cursor-pointer"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-[#1A1A1A] border-2 border-[#F4C430]/40 rounded-2xl p-6 shadow-2xl relative overflow-hidden animate-fadeIn cursor-default"
+      >
         
+        {/* Indicador de cierre deslizable para móviles */}
+        <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4 md:hidden" />
+
         {/* Botón cerrar */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full bg-white/5"
+          className="absolute top-4 right-4 text-slate-400 hover:text-white p-2.5 rounded-full bg-white/5 active:scale-95 transition-transform"
         >
           <X className="w-5 h-5" />
         </button>
@@ -95,7 +122,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 placeholder="ejemplo@jjpizza.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 pl-9 rounded-xl focus:border-[#F4C430] outline-none font-bold"
+                className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 pl-9 rounded-xl focus:border-[#F4C430] outline-none font-bold min-h-[44px]"
               />
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
@@ -111,7 +138,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#141414] border border-white/10 text-xs text-white p-2.5 pl-9 rounded-xl focus:border-[#F4C430] outline-none font-bold"
+                className="w-full bg-[#141414] border border-white/10 text-xs text-white p-3 pl-9 rounded-xl focus:border-[#F4C430] outline-none font-bold min-h-[44px]"
               />
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
@@ -120,7 +147,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#8B1E1E] hover:bg-[#a62424] text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 border border-[#F4C430]/30"
+            className="w-full py-3.5 bg-[#8B1E1E] hover:bg-[#a62424] active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 border border-[#F4C430]/30 min-h-[44px]"
           >
             {loading ? <RefreshCw className="w-4 h-4 animate-spin text-[#F4C430]" /> : 'Ingresar al Sistema'}
           </button>
@@ -135,7 +162,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
             <button
               type="button"
               onClick={() => handleQuickLogin('admin@jjpizza.com', 'Admin123!')}
-              className="py-2.5 px-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-600 text-purple-200 text-[10px] font-extrabold flex items-center justify-center gap-1.5"
+              className="py-3 px-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 active:scale-95 border border-purple-600 text-purple-200 text-[10px] font-extrabold flex items-center justify-center gap-1.5 min-h-[44px]"
             >
               <ShieldCheck className="w-4 h-4 text-purple-400" />
               <span>Administrador</span>
@@ -144,7 +171,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
             <button
               type="button"
               onClick={() => handleQuickLogin('caja@jjpizza.com', 'Staff123!')}
-              className="py-2.5 px-2 rounded-xl bg-blue-950/80 hover:bg-blue-900 border border-blue-600 text-blue-200 text-[10px] font-extrabold flex items-center justify-center gap-1.5"
+              className="py-3 px-2 rounded-xl bg-blue-950/80 hover:bg-blue-900 active:scale-95 border border-blue-600 text-blue-200 text-[10px] font-extrabold flex items-center justify-center gap-1.5 min-h-[44px]"
             >
               <UserCheck className="w-4 h-4 text-blue-400" />
               <span>Staff / Cajero</span>
