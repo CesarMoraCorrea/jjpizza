@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Outfit', sans-serif;
+    @apply bg-slate-950 text-slate-100 antialiased;
+  }
+
+  ::selection {
+    background-color: rgba(245, 185, 39, 0.3);
+    color: #ffffff;
+  }
+}
+
+/* Glassmorphism card utility */
+.glass-panel {
+  background-color: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(15, 23, 42, 0.6);
+  @apply backdrop-blur-lg shadow-lg shadow-black/20;
+}
+
+.glass-panel-glow-yellow {
+  background-color: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(245, 185, 39, 0.15);
+  @apply backdrop-blur-lg shadow-lg shadow-black/20 transition-all duration-300;
+}
+.glass-panel-glow-yellow:hover {
+  border-color: rgba(245, 185, 39, 0.3);
+  box-shadow: 0 0 15px -3px rgba(245, 185, 39, 0.3), 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+.glass-panel-glow-red {
+  background-color: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(217, 37, 37, 0.15);
+  @apply backdrop-blur-lg shadow-lg shadow-black/20 transition-all duration-300;
+}
+.glass-panel-glow-red:hover {
+  border-color: rgba(217, 37, 37, 0.3);
+  box-shadow: 0 0 15px -3px rgba(217, 37, 37, 0.3), 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+/* Animations */
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulseGlowLowStock {
+  animation: pulseGlowLowStock 2s infinite ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseGlowLowStock {
+  0%, 100% {
+    border-color: rgba(210, 35, 42, 0.15);
+    background-color: rgba(210, 35, 42, 0.02);
+  }
+  50% {
+    border-color: rgba(210, 35, 42, 0.4);
+    background-color: rgba(210, 35, 42, 0.06);
+    box-shadow: 0 0 15px -3px rgba(210, 35, 42, 0.15);
+  }
+}
+
+/* Custom scrollbar for dark premium look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-950;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgb(15, 23, 42);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(245, 185, 39, 0.4);
+}
+
+/* Logo specific font styling */
+.logo-script {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+}
