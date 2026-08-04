@@ -54,19 +54,17 @@ cd jjpizza
 npm install
 ```
 
-### 3. Configurar variables de entorno
+### 3. Configurar variable de entorno (Única Variable)
 Cree un archivo `.env` en la raíz del proyecto tomando como plantilla `.env.example`:
 ```bash
 cp .env.example .env
 ```
 
-Ajuste las URLs de la API Backend:
+Ajuste la URL base del servidor backend API:
 ```env
-VITE_API_URL=http://localhost:5000/api/inventory
-VITE_API_URL_ORDERS=http://localhost:5000/api/orders
-VITE_API_URL_AUTH=http://localhost:5000/api/auth
-VITE_API_URL_SHIFTS=http://localhost:5000/api/shifts
+VITE_API_URL=http://localhost:5000
 ```
+*(En producción en Vercel, ajuste a `VITE_API_URL=https://jjpizzaback.vercel.app`)*.
 
 ### 4. Iniciar servidor de desarrollo
 ```bash
