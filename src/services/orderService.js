@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiUrl } from './apiConfig';
 
-const API_URL = import.meta.env.VITE_API_URL_ORDERS || 'http://localhost:5000/api/orders';
+const API_URL = getApiUrl('/orders');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -28,23 +29,15 @@ export const orderService = {
     return response.data;
   },
 
-  // Obtener todos los pedidos (requiere Staff o Admin)
+  // Obtener todos los pedidos
   getOrders: async () => {
     const response = await api.get('/');
     return response.data;
   },
 
-  // Actualizar el estado de cocina, estado de pago y/o método de pago
-  updateOrderStatus: async (id, status, paymentMethod, paymentStatus) => {
-    const payload = {};
-    if (typeof status === 'object' && status !== null) {
-      Object.assign(payload, status);
-    } else {
-      if (status) payload.status = status;
-      if (paymentMethod) payload.paymentMethod = paymentMethod;
-      if (paymentStatus) payload.paymentStatus = paymentStatus;
-    }
-    const response = await api.put(`/${id}/status`, payload);
+  // Actualizar el estado de cocina o estado de pago de un pedido
+  updateOrderStatus: async (id, statusData) => {
+    const response = await api.put(`/${id}/status`, statusData);
     return response.data;
   }
 };

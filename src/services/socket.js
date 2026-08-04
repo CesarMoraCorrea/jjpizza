@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
+import { getBaseServerUrl } from './apiConfig';
 
-const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || rawApiUrl.replace(/\/api\/.*$/, '');
+const SOCKET_URL = getBaseServerUrl();
 
 export const socket = io(SOCKET_URL, {
   autoConnect: true,

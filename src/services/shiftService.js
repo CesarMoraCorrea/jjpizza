@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getApiUrl } from './apiConfig';
 
-const API_URL = import.meta.env.VITE_API_URL_SHIFTS || 'http://localhost:5000/api/shifts';
+const API_URL = getApiUrl('/shifts');
 
 const api = axios.create({
   baseURL: API_URL,
@@ -28,20 +29,20 @@ export const shiftService = {
     return response.data;
   },
 
-  // Abrir turno de caja con fondo inicial
+  // Abrir turno de caja
   openShift: async (initialCash) => {
     const response = await api.post('/open', { initialCash });
     return response.data;
   },
 
-  // Cerrar turno de caja y realizar arqueo auditado
-  closeShift: async (declaredData) => {
-    const response = await api.post('/close', declaredData);
+  // Arqueo y Cierre Diario de caja
+  closeShift: async (declaredTotals) => {
+    const response = await api.post('/close', declaredTotals);
     return response.data;
   },
 
-  // Obtener historial de cierres auditados (Admin)
-  getShiftHistory: async () => {
+  // Consultar historial de turnos cerrados
+  getHistory: async () => {
     const response = await api.get('/history');
     return response.data;
   }
