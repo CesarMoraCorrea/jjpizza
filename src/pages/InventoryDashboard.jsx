@@ -182,7 +182,7 @@ export default function InventoryDashboard({ onNavigateToPOS, onNavigateToClient
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      const res = await orderService.updateOrderStatus(orderId, newStatus);
+      const res = await orderService.updateOrderStatus(orderId, { status: newStatus });
       if (res.success) {
         await fetchOrders();
         await loadData(); // Reload supply levels since stock was deducted!

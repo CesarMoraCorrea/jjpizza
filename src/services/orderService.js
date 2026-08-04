@@ -37,7 +37,9 @@ export const orderService = {
 
   // Actualizar el estado de cocina o estado de pago de un pedido
   updateOrderStatus: async (id, statusData) => {
-    const response = await api.put(`/${id}/status`, statusData);
+    // Normalizar automáticamente si el parámetro viene como string simple (ej: 'preparing')
+    const payload = typeof statusData === 'string' ? { status: statusData } : statusData;
+    const response = await api.put(`/${id}/status`, payload);
     return response.data;
   }
 };

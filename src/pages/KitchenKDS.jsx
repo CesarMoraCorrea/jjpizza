@@ -58,7 +58,7 @@ export default function KitchenKDS() {
   const handleUpdateStatus = async (orderId, newStatus) => {
     try {
       setActionLoadingId(orderId);
-      await orderService.updateOrderStatus(orderId, newStatus);
+      await orderService.updateOrderStatus(orderId, { status: newStatus });
       await fetchOrders();
     } catch (err) {
       alert(err.response?.data?.message || 'Error al actualizar el estado de la orden.');
